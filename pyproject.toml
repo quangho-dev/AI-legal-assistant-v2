@@ -19,7 +19,7 @@ dependencies = [
     "wikipedia",
     "langchain-core",
     "langsmith",
-    "langchain[openai]"
+    "langchain[openai]",
     "pypdf",
     "pymupdf",
     "streamlit[pdf]",
