@@ -115,7 +115,6 @@ def main():
                 st.session_state.rag_system = rag_system
                 st.session_state.initialized = True
                 st.success(f"✅ Hệ thống sẵn sàng!")
-                st.success(f"✅ Hệ thống sẵn sàng! {num_chunks}")
     
     st.markdown("---")
     
@@ -172,7 +171,7 @@ def main():
 
 with st.sidebar:
     st.subheader("Điều hướng")
-    st.page_link("Legal assistant.py", label="Trang chủ")
+    st.page_link("app.py", label="Chatbox hỏi đáp luật")
     st.page_link("pages/1_Rà soát tài liệu.py", label="Rà soát tài liệu")
 
 if __name__ == "__main__":

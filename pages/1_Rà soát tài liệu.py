@@ -11,8 +11,6 @@ import streamlit as st
 import pdfplumber
 from pypdf import PdfReader
 import io
-import json
-import anthropic
 from src.graph_builder.analyzing_docs_graph_builder import AnalyzingDocsGraphBuilder
 from src.document_ingestion.document_processor import DocumentProcessor
 from src.vectorstore.vectorstore import VectorStore
@@ -31,370 +29,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
-st.title("Rà soát tài liệu")
-# ──────────────────────────────────────────────────────────
-#  Global CSS
-# ──────────────────────────────────────────────────────────
-# Disabled to use Streamlit default theme
-if False:
-    st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:wght@600;700&display=swap');
-
-/* ── Reset & Base ── */
-html, body, .stApp {
-    background: #0f1117;
-    color: #e8e6e1;
-    font-family: 'Be Vietnam Pro', sans-serif;
-}
-
-/* ── Sidebar ── */
-[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #13161f 0%, #0d1117 100%);
-    border-right: 1px solid #1e2535;
-}
-[data-testid="stSidebar"] > div { padding-top: 0 !important; }
-
-/* ── Header banner ── */
-.hero-banner {
-    background: linear-gradient(135deg, #0d1117 0%, #1a2332 40%, #0e1a2d 100%);
-    border: 1px solid #1e3050;
-    border-radius: 16px;
-    padding: 32px 40px;
-    margin-bottom: 28px;
-    position: relative;
-    overflow: hidden;
-}
-.hero-banner::before {
-    content: '';
-    position: absolute;
-    top: -60px; right: -60px;
-    width: 240px; height: 240px;
-    background: radial-gradient(circle, rgba(196,164,90,0.12) 0%, transparent 70%);
-    pointer-events: none;
-}
-.hero-banner::after {
-    content: '';
-    position: absolute;
-    bottom: -40px; left: 30%;
-    width: 180px; height: 180px;
-    background: radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 70%);
-    pointer-events: none;
-}
-.hero-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 2.1rem;
-    font-weight: 700;
-    color: #f0e6c8;
-    margin: 0 0 6px;
-    letter-spacing: -0.02em;
-}
-.hero-subtitle {
-    font-size: 0.9rem;
-    color: #7a8aa0;
-    margin: 0;
-    font-weight: 300;
-    letter-spacing: 0.04em;
-}
-.hero-badge {
-    display: inline-block;
-    background: rgba(196,164,90,0.15);
-    border: 1px solid rgba(196,164,90,0.3);
-    color: #c4a45a;
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 3px 10px;
-    border-radius: 20px;
-    margin-bottom: 12px;
-}
-
-/* ── Section labels ── */
-.section-label {
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #c4a45a;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.section-label::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: linear-gradient(90deg, rgba(196,164,90,0.3), transparent);
-}
-
-/* ── Upload boxes ── */
-.upload-card {
-    background: #13161f;
-    border: 1.5px dashed #1e2d45;
-    border-radius: 12px;
-    padding: 6px;
-    margin-bottom: 16px;
-    transition: border-color 0.2s;
-}
-.upload-card:hover { border-color: rgba(196,164,90,0.4); }
-
-[data-testid="stFileUploader"] {
-    background: transparent !important;
-}
-[data-testid="stFileUploader"] section {
-    background: #0d1117 !important;
-    border: 1px solid #1e2535 !important;
-    border-radius: 10px !important;
-    color: #7a8aa0 !important;
-}
-[data-testid="stFileUploader"] label { color: #c8c0b0 !important; font-size: 0.85rem !important; }
-
-/* ── Text inputs & areas ── */
-.stTextArea textarea, .stTextInput input {
-    background: #13161f !important;
-    border: 1px solid #1e2d45 !important;
-    border-radius: 10px !important;
-    color: #e8e6e1 !important;
-    font-family: 'Be Vietnam Pro', sans-serif !important;
-    font-size: 0.9rem !important;
-    transition: border-color 0.2s !important;
-}
-.stTextArea textarea:focus, .stTextInput input:focus {
-    border-color: rgba(196,164,90,0.5) !important;
-    box-shadow: 0 0 0 3px rgba(196,164,90,0.07) !important;
-}
-.stTextArea label, .stTextInput label {
-    color: #9aacbf !important;
-    font-size: 0.82rem !important;
-    font-weight: 500 !important;
-    margin-bottom: 4px !important;
-}
-
-/* ── File tags ── */
-.file-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(59,130,246,0.1);
-    border: 1px solid rgba(59,130,246,0.25);
-    color: #7eb3f5;
-    font-size: 0.75rem;
-    padding: 4px 10px;
-    border-radius: 6px;
-    margin: 3px 3px 3px 0;
-    font-weight: 500;
-}
-.file-tag.target {
-    background: rgba(196,164,90,0.1);
-    border-color: rgba(196,164,90,0.3);
-    color: #c4a45a;
-}
-
-/* ── Analyze button ── */
-.stButton > button {
-    background: linear-gradient(135deg, #c4a45a, #a8883e) !important;
-    color: #0d1117 !important;
-    font-family: 'Be Vietnam Pro', sans-serif !important;
-    font-weight: 700 !important;
-    font-size: 0.9rem !important;
-    letter-spacing: 0.05em !important;
-    border: none !important;
-    border-radius: 10px !important;
-    padding: 12px 28px !important;
-    width: 100% !important;
-    transition: all 0.2s !important;
-    box-shadow: 0 4px 20px rgba(196,164,90,0.2) !important;
-}
-.stButton > button:hover {
-    transform: translateY(-1px) !important;
-    box-shadow: 0 6px 28px rgba(196,164,90,0.35) !important;
-}
-.stButton > button:active { transform: translateY(0) !important; }
-
-/* ── Result card ── */
-.result-wrapper {
-    background: linear-gradient(135deg, #13161f 0%, #0f1520 100%);
-    border: 1px solid #1e2d45;
-    border-radius: 16px;
-    padding: 28px 32px;
-    margin-top: 24px;
-    position: relative;
-    overflow: hidden;
-}
-.result-wrapper::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, #c4a45a, #7eb3f5, transparent);
-}
-.result-header {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.1rem;
-    color: #f0e6c8;
-    margin-bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-/* ── Checklist items ── */
-.result-content {
-    color: #c8c0b0;
-    line-height: 1.85;
-    font-size: 0.88rem;
-}
-.result-content h3 {
-    color: #c4a45a;
-    font-size: 0.95rem;
-    margin: 18px 0 8px;
-    font-weight: 600;
-}
-.result-content ul { padding-left: 18px; }
-.result-content li { margin-bottom: 6px; }
-.result-content strong { color: #e8e6e1; }
-.result-content em { color: #7a8aa0; }
-
-/* ── Summary chips ── */
-.summary-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 20px;
-}
-.summary-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-}
-.chip-gold   { background: rgba(196,164,90,0.12); border: 1px solid rgba(196,164,90,0.3); color: #c4a45a; }
-.chip-blue   { background: rgba(59,130,246,0.1);  border: 1px solid rgba(59,130,246,0.25); color: #7eb3f5; }
-.chip-red    { background: rgba(239,68,68,0.1);   border: 1px solid rgba(239,68,68,0.25);  color: #f87171; }
-.chip-green  { background: rgba(34,197,94,0.1);   border: 1px solid rgba(34,197,94,0.25);  color: #4ade80; }
-
-/* ── Divider ── */
-hr { border-color: #1e2535 !important; margin: 20px 0 !important; }
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: #0d1117; }
-::-webkit-scrollbar-thumb { background: #1e2d45; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #2a3f5c; }
-
-/* ── Sidebar extras ── */
-.sidebar-note {
-    background: rgba(196,164,90,0.06);
-    border: 1px solid rgba(196,164,90,0.15);
-    border-radius: 8px;
-    padding: 12px 14px;
-    font-size: 0.78rem;
-    color: #8a9ab0;
-    line-height: 1.6;
-}
-.sidebar-note b { color: #c4a45a; }
-
-/* ── Spinner override ── */
-.stSpinner > div { border-top-color: #c4a45a !important; }
-
-/* ── Selectbox ── */
-[data-testid="stSelectbox"] > div > div {
-    background: #13161f !important;
-    border: 1px solid #1e2d45 !important;
-    color: #e8e6e1 !important;
-}
-
-/* ── PDF Viewer ── */
-.pdf-viewer-wrapper {
-    background: #0d1117;
-    border: 1px solid #1e2d45;
-    border-radius: 14px;
-    overflow: hidden;
-    margin-top: 20px;
-}
-.pdf-viewer-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 20px;
-    background: #13161f;
-    border-bottom: 1px solid #1e2535;
-}
-.pdf-viewer-title {
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: #c4a45a;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.pdf-viewer-subtitle {
-    font-size: 0.72rem;
-    color: #4a5a70;
-}
-.pdf-page-container {
-    padding: 0;
-    background: #0d1117;
-}
-
-/* ── Highlight legend ── */
-.highlight-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 12px 20px;
-    background: #0d1117;
-    border-top: 1px solid #1e2535;
-}
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.72rem;
-    color: #7a8aa0;
-}
-.legend-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 2px;
-    flex-shrink: 0;
-}
-
-/* ── Tabs ── */
-[data-testid="stTabs"] [data-baseweb="tab-list"] {
-    background: #13161f !important;
-    border-bottom: 1px solid #1e2535 !important;
-    gap: 0 !important;
-}
-[data-testid="stTabs"] [data-baseweb="tab"] {
-    background: transparent !important;
-    color: #4a5a70 !important;
-    font-family: 'Be Vietnam Pro', sans-serif !important;
-    font-size: 0.8rem !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.04em !important;
-    padding: 10px 20px !important;
-    border-bottom: 2px solid transparent !important;
-}
-[data-testid="stTabs"] [aria-selected="true"] {
-    color: #c4a45a !important;
-    border-bottom-color: #c4a45a !important;
-}
-[data-testid="stTabs"] [data-baseweb="tab-panel"] {
-    background: #0d1117 !important;
-    padding: 0 !important;
-}
-</style>
-""", unsafe_allow_html=True)
 
 # ──────────────────────────────────────────────────────────
 #  Helpers
@@ -615,10 +249,6 @@ def render_embedded_pdf(file_bytes: bytes, filename: str):
     b64 = get_pdf_base64(file_bytes)
     st.markdown(f"""
     <div class="pdf-viewer-wrapper">
-        <div class="pdf-viewer-header">
-            <div class="pdf-viewer-title">📄 Tài liệu gốc — {filename}</div>
-            <div style="font-size:0.7rem;color:#2a3a50;">Bản PDF gốc</div>
-        </div>
         <iframe
             src="data:application/pdf;base64,{b64}"
             width="100%"
@@ -647,20 +277,11 @@ if "target_pages" not in st.session_state:
 # ──────────────────────────────────────────────────────────
 with st.sidebar:
     st.subheader("Điều hướng")
-    st.page_link("Legal assistant.py", label="Trang chủ")
+    st.page_link("app.py", label="Chatbox hỏi đáp luật")
     st.page_link("pages/1_Rà soát tài liệu.py", label="Rà soát tài liệu")
 
-# ──────────────────────────────────────────────────────────
-#  Main — Hero header
-# ──────────────────────────────────────────────────────────
-st.markdown("""
-<div class="hero-banner">
-    <div class="hero-subtitle">
-        Tải lên hợp đồng, điều khoản, hoặc văn bản pháp lý bất kỳ —
-        AI sẽ phân tích chuyên sâu, nhận diện rủi ro và đề xuất khuyến nghị.
-    </div>
-</div>
-""", unsafe_allow_html=True)
+st.title("Rà soát tài liệu")
+st.subheader("Tải lên hợp đồng, điều khoản, hoặc văn bản pháp lý bất kỳ — AI sẽ phân tích chuyên sâu, nhận diện rủi ro và đề xuất khuyến nghị.")
 
 # ──────────────────────────────────────────────────────────
 #  Upload + input columns
@@ -785,7 +406,14 @@ with btn_col:
 if analyze_clicked:
     errors = []
     if not target_file:
-        errors.append("⚠️ Vui lòng tải lên **tài liệu cần phân tích**.")
+        errors.append("⚠️ Vui lòng tải lên **tài liệu cần phân tích**")
+    
+    if not mo_ta.strip():
+        errors.append("⚠️ Vui lòng điền **mô tả yêu cầu**")
+
+    if not ben_nao_final.strip():
+        errors.append("⚠️ Vui lòng cho biết bạn thuộc bên nào trong tài liệu (hoặc chọn 'Chưa xác định' nếu không rõ)")
+    
     for err in errors:
         st.error(err)
 
@@ -924,7 +552,7 @@ elif not analyze_clicked:
         border: 1px dashed #1a2535;
         border-radius:14px;
         margin-top:8px;
-        background: #0d1117;
+        background: #f1f2f6;
     ">
         <div style="font-size:2.5rem;margin-bottom:12px;opacity:0.4;">⚖️</div>
         <div style="font-size:1rem;color:#2e4060;font-weight:500;">
