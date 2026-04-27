@@ -4,7 +4,7 @@
 Run:  streamlit run legal_analyzer_app.py
 
 Requirements:
-    pip install streamlit pdfplumber pypdf anthropic
+    pip install streamlit>=1.42.0 pdfplumber pypdf anthropic
 """
 
 import streamlit as st
@@ -17,7 +17,6 @@ from src.vectorstore.vectorstore import VectorStore
 from src.config.config import Config
 import tempfile
 import os
-import base64
 import re
 
 # ──────────────────────────────────────────────────────────
@@ -96,11 +95,6 @@ def get_pdf_meta(file_bytes: bytes) -> dict:
         }
     except Exception:
         return {"pages": "?", "title": "—", "author": "—"}
-
-
-def get_pdf_base64(file_bytes: bytes) -> str:
-    """Convert PDF bytes to base64 for embedding."""
-    return base64.b64encode(file_bytes).decode("utf-8")
 
 
 def extract_key_phrases(analysis_text: str) -> dict[str, list[str]]:
@@ -242,22 +236,6 @@ def render_highlighted_text_viewer(pages: list[dict], highlights: dict[str, list
     </div>
     """
     st.markdown(full_html, unsafe_allow_html=True)
-
-
-def render_embedded_pdf(file_bytes: bytes, filename: str):
-    """Render the original PDF embedded via iframe with base64."""
-    b64 = get_pdf_base64(file_bytes)
-    st.markdown(f"""
-    <div class="pdf-viewer-wrapper">
-        <iframe
-            src="data:application/pdf;base64,{b64}"
-            width="100%"
-            height="660"
-            style="border:none;display:block;background:#1a1a2e;"
-            title="PDF Viewer">
-        </iframe>
-    </div>
-    """, unsafe_allow_html=True)
 
 
 # ──────────────────────────────────────────────────────────
@@ -407,21 +385,21 @@ if analyze_clicked:
     errors = []
     if not target_file:
         errors.append("⚠️ Vui lòng tải lên **tài liệu cần phân tích**")
-    
+
     if not mo_ta.strip():
         errors.append("⚠️ Vui lòng điền **mô tả yêu cầu**")
 
     if not ben_nao_final.strip():
         errors.append("⚠️ Vui lòng cho biết bạn thuộc bên nào trong tài liệu (hoặc chọn 'Chưa xác định' nếu không rõ)")
-    
+
     for err in errors:
         st.error(err)
 
     if not errors:
         with st.spinner("⏳ Đang trích xuất và phân tích tài liệu..."):
             doc_processor = DocumentProcessor(
-                 chunk_size=Config.CHUNK_SIZE,
-                 chunk_overlap=Config.CHUNK_OVERLAP
+                chunk_size=Config.CHUNK_SIZE,
+                chunk_overlap=Config.CHUNK_OVERLAP
             )
 
             vector_store = VectorStore()
@@ -506,7 +484,7 @@ if st.session_state.analysis_result:
         st.markdown(result_text)
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # Download button
+        # Download button for analysis text
         st.markdown("<br>", unsafe_allow_html=True)
         st.download_button(
             label="💾  Tải xuống kết quả (.txt)",
@@ -526,12 +504,22 @@ if st.session_state.analysis_result:
         """, unsafe_allow_html=True)
 
         if output_pdf_bytes:
+            # ── Native Streamlit PDF viewer (requires streamlit>=1.42) ──
+            st.pdf(output_pdf_bytes)
+
+            # Download button for output PDF
             output_name = (
                 os.path.basename(output_pdf_path)
                 if output_pdf_path
                 else f"output_{fname}"
             )
-            render_embedded_pdf(output_pdf_bytes, output_name)
+            st.download_button(
+                label="💾  Tải xuống PDF đầu ra",
+                data=output_pdf_bytes,
+                file_name=output_name,
+                mime="application/pdf",
+                use_container_width=True,
+            )
         else:
             st.markdown("""
             <div style="padding:40px;text-align:center;color:#2a3a50;font-size:0.85rem;">
