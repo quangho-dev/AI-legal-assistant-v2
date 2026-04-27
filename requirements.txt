@@ -17,4 +17,3 @@ pypdf
 pymupdf
 streamlit[pdf]
 pdfplumber
-anthropic
