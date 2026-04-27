@@ -33,6 +33,9 @@ st.set_page_config(
 #  Helpers
 # ──────────────────────────────────────────────────────────
 
+for key in list(st.session_state.keys()):
+    del st.session_state[key]
+
 def extract_text_from_pdf(file_bytes: bytes) -> str:
     """Extract text from PDF bytes using pdfplumber (fallback: pypdf)."""
     try:
