@@ -17,3 +17,5 @@ pypdf
 pymupdf
 streamlit[pdf]
 pdfplumber
+ragas
+mlflow

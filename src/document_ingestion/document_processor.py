@@ -62,7 +62,9 @@ class DocumentProcessor:
         docs: List[Document] = []
         for src in sources:
             if src.startswith("http://") or src.startswith("https://"):
+                print(f"Loading from URL: {src}")
                 docs.extend(self.load_from_url(src))
+                return docs  # For URLs, we assume one document per URL and return immediately
 
             path = Path(src)
             if path.is_dir():

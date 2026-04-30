@@ -70,3 +70,19 @@ class GraphBuilder:
         
         initial_state = RAGState(question=question)
         return self.graph.invoke(initial_state)
+
+    async def arun(self, question: str) -> dict:
+        """
+        Run the RAG workflow
+        
+        Args:
+            question: User question
+            
+        Returns:
+            Final state with answer
+        """
+        if self.graph is None:
+            self.build()
+        
+        initial_state = RAGState(question=question)
+        return self.graph.invoke(initial_state)

@@ -32,6 +32,8 @@ def initialize_rag(llm):
         docs = doc_processor.process_urls(urls=["/Users/admin/Documents/Personal projects/AI assistant/data/HD.HO ANH QUANG.pdf"])
         
         vector_store.create_vectorstore(docs, {"type_of_doc":"target_doc"})
+        
+        res = vector_store.retrieve("Hợp đồng lao động của Hồ Anh Quang có những điều khoản nào về lương và trợ cấp?")
 
         reference_docs = doc_processor.process_urls(urls=["/Users/admin/Documents/Personal projects/AI assistant/data/SỔ-TAY-NHÂN-VIÊN.pdf"])
         
